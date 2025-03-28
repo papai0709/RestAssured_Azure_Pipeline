@@ -53,7 +53,7 @@ public class CreateDbConnection {
     public static void readDataFromCosmosDb(CosmosContainer container) {
         System.out.println("Reading data from Cosmos DB");
 
-        String sqlQuery = "SELECT * FROM c WHERE c.Id = 'Emp_1'";
+        String sqlQuery = "SELECT * FROM c WHERE c.id = 'Emp_1001'";
         CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
         options.setPartitionKey(new PartitionKey("id"));
 
