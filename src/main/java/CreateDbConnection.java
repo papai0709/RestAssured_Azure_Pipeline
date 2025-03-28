@@ -3,6 +3,9 @@ import com.azure.cosmos.models.CosmosContainerResponse;
 import com.azure.cosmos.models.CosmosDatabaseResponse;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.util.CosmosPagedFlux;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,6 +16,7 @@ public class CreateDbConnection {
 
     static Properties properties = new Properties();
     static CosmosAsyncClient client;
+    private static final Logger logger = LoggerFactory.getLogger(CreateDbConnection.class);
 
     public static CosmosAsyncContainer connect() throws IOException {
         System.out.println("Reading Cosmos DB configuration");
@@ -44,16 +48,23 @@ public class CreateDbConnection {
         return container;
     }
 
-    public static void readDataFromCosmosDb(@org.jetbrains.annotations.NotNull CosmosAsyncContainer container) {
-        System.out.println("Reading data from Cosmos DB");
-
+    public static void readDataFromCosmosDb(CosmosAsyncContainer container) {
+        logger.info("Reading data from Cosmos DB");
+        ObjectMapper objectMapper = new ObjectMapper();
         String sqlQuery = "SELECT * FROM c WHERE c.id = 'Emp_1001'";
         CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
 
         CosmosPagedFlux<Object> items = container.queryItems(sqlQuery, options, Object.class);
         items.byPage().subscribe(page -> {
-            System.out.println("Data read from Cosmos DB");
-            page.getElements().forEach(System.out::println);
+            logger.info("Data read from Cosmos DB");
+            page.getElements().forEach(item -> {
+                try {
+                    String json = objectMapper.writeValueAsString(item);
+                    System.out.println(json);
+                } catch (Exception e) {
+                    logger.error("Error parsing item to JSON", e);
+                }
+            });
             closeConnection();
         });
     }
@@ -70,11 +81,11 @@ public class CreateDbConnection {
             CosmosAsyncContainer container = connect();
             readDataFromCosmosDb(container);
         } catch (IOException ignored) {
-            System.out.println("Error reading properties file");
+            logger.error("Error reading properties file");
         } catch (Exception e) {
-            System.out.println("Error connecting to Cosmos DB: " + e.getMessage());
+            logger.error("Error connecting to Cosmos DB: {}", e.getMessage());
         } finally {
-            System.out.println("Finished");
+            logger.info("Finished");
         }
     }
 }
