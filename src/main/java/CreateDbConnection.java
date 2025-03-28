@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 
 public class CreateDbConnection {
 
@@ -18,7 +19,7 @@ public class CreateDbConnection {
     static CosmosAsyncClient client;
     private static final Logger logger = LoggerFactory.getLogger(CreateDbConnection.class);
 
-    public static CosmosAsyncContainer connect() throws IOException {
+    public CosmosAsyncContainer connect() throws IOException {
         System.out.println("Reading Cosmos DB configuration");
         properties.load(Files.newInputStream(Paths.get("src/main/resources/data.properties")));
         String ENDPOINT = properties.getProperty("ENDPOINT");
@@ -48,7 +49,7 @@ public class CreateDbConnection {
         return container;
     }
 
-    public static void readDataFromCosmosDb(CosmosAsyncContainer container) {
+    public CosmosPagedFlux readDataFromCosmosDb(CosmosAsyncContainer container, CountDownLatch latch) {
         logger.info("Reading data from Cosmos DB");
         ObjectMapper objectMapper = new ObjectMapper();
         String sqlQuery = "SELECT * FROM c WHERE c.id = 'Emp_1001'";
@@ -66,26 +67,15 @@ public class CreateDbConnection {
                 }
             });
             closeConnection();
+            latch.countDown(); // Signal that the async operation is complete
         });
+        return items;
     }
 
-    public static void closeConnection() {
+    public void closeConnection() {
         if (client != null) {
             client.close();
             System.out.println("Connection to Cosmos DB closed");
-        }
-    }
-
-    public static void main(String[] args) {
-        try {
-            CosmosAsyncContainer container = connect();
-            readDataFromCosmosDb(container);
-        } catch (IOException ignored) {
-            logger.error("Error reading properties file");
-        } catch (Exception e) {
-            logger.error("Error connecting to Cosmos DB: {}", e.getMessage());
-        } finally {
-            logger.info("Finished");
         }
     }
 }
